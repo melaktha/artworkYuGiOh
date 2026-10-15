@@ -6,11 +6,15 @@
 <title>Pesca un Artwork</title>
 <meta name="theme-color" content="#13111d">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Artwork">
+<link id="ic-apple" rel="apple-touch-icon" href="apple-touch-icon.png">
+<link id="ic-fav" rel="icon" href="favicon.png">
+<link id="ic-big" rel="icon" sizes="512x512" href="icon-512.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus+SC&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
-/* Una colonna stretta: cornice dell'artwork al centro, azioni sotto, lista "da scaricare" in una seconda scheda */
+/* Una colonna stretta: cornice dell'artwork al centro, azioni sotto; schede Pesca / Cerca / Da scaricare */
 :root{
   --bg:#eef0f5; --surface:#ffffff; --fg:#1b1830; --muted:#6a6680; --line:#d9dae5;
   --gold:#a9781f; --gold-soft:#f3e7cc; --danger:#b3392f;
@@ -24,30 +28,50 @@
   --gold:#d9a944; --gold-soft:#3a2f1a; --danger:#e0695e; color-scheme:dark;
 }}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{margin:0;min-height:100%}
 body{background:var(--bg);color:var(--fg);font:16px/1.5 var(--body);
   padding:max(12px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));}
-.wrap{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.wrap{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+header{display:flex;flex-direction:column;gap:12px}
 h1{font:400 1.35rem/1.1 var(--display);letter-spacing:.06em;margin:0}
 .tabs{display:flex;border:1px solid var(--line);border-radius:999px;padding:3px;background:var(--surface)}
-.tabs button{border:0;background:none;color:var(--muted);font:500 .85rem var(--body);padding:6px 14px;border-radius:999px;cursor:pointer}
+.tabs button{flex:1;border:0;background:none;color:var(--muted);font:500 .85rem var(--body);padding:7px 8px;border-radius:999px;cursor:pointer;white-space:nowrap}
 .tabs button[aria-selected="true"]{background:var(--fg);color:var(--bg)}
-.frame{position:relative;aspect-ratio:1/1;max-width:100%;background:var(--surface);border:1px solid var(--line);padding:10px;border-radius:4px}
+.frame{position:relative;align-self:center;width:100%;aspect-ratio:1/1;max-width:100%;background:var(--surface);border:1px solid var(--line);padding:10px;border-radius:4px}
+.frame.loaded{width:fit-content;aspect-ratio:auto}
 .frame::before{content:"";position:absolute;inset:6px;border:1px solid var(--gold);opacity:.55;pointer-events:none;border-radius:2px}
-.frame img{width:100%;height:100%;object-fit:cover;display:block;border-radius:1px;background:var(--bg)}
+.frame img{display:block;width:auto;height:auto;max-width:100%;max-height:62vh;border-radius:1px;background:var(--bg)}
 .frame .msg{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:24px;color:var(--muted);font-size:.95rem}
 .meta{display:flex;flex-direction:column;gap:2px;min-height:3.4em}
 .name{font:400 1.3rem/1.25 var(--display);letter-spacing:.03em;text-wrap:balance;margin:0}
-.code{font:400 .8rem var(--mono);color:var(--muted);letter-spacing:.04em}
+.sub{font-size:.85rem;color:var(--muted)}
+.code{font:400 .8rem var(--mono);color:var(--muted);letter-spacing:.04em;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .code a{color:inherit}
-.actions{display:grid;grid-template-columns:1fr auto;gap:10px}
-.btn{font:600 1rem var(--body);border-radius:10px;padding:14px 18px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--fg)}
-.btn:focus-visible,.tabs button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.alt{font:600 .7rem var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--gold);border:1px solid var(--gold);border-radius:4px;padding:1px 6px}
+.actions{display:grid;grid-template-columns:1fr auto auto;gap:8px}
+.btn{font:600 1rem var(--body);border-radius:10px;padding:14px 16px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--fg)}
+.btn:focus-visible,.tabs button:focus-visible,.link:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .btn.primary{background:var(--fg);color:var(--bg);border-color:var(--fg);letter-spacing:.02em}
-.btn.saved{background:var(--gold-soft);border-color:var(--gold);color:var(--fg)}
+.btn.saved{background:var(--gold-soft);border-color:var(--gold)}
+.btn.discard{color:var(--danger)}
 .btn:disabled{opacity:.5;cursor:default}
-.status{font-size:.8rem;color:var(--muted);text-align:center}
+.btn.small{padding:8px 12px;font-size:.85rem;border-radius:8px}
+.link{background:none;border:0;padding:0;color:var(--muted);font:500 .85rem var(--body);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.bar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.status{font-size:.8rem;color:var(--muted)}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--gold-soft);border:1px solid var(--gold);border-radius:999px;padding:3px 4px 3px 10px;font-size:.8rem;max-width:100%}
+.chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.chip button{border:0;background:none;color:var(--fg);cursor:pointer;font-size:.9rem;padding:0 6px;line-height:1}
+.search{display:grid;grid-template-columns:1fr auto;gap:8px}
+input[type=search],select{font:16px var(--body);color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;min-width:0;width:100%}
+.check{display:flex;align-items:center;gap:8px;font-size:.9rem}
+.check input{width:20px;height:20px;accent-color:var(--gold)}
+.results{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden}
+.results button{display:flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left;border:0;border-bottom:1px solid var(--line);background:none;color:var(--fg);padding:10px 12px;cursor:pointer;font:inherit;min-width:0}
+.results button:last-child{border-bottom:0}
+.results .rn{font-weight:600;overflow-wrap:anywhere}
+.results .rt{font-size:.78rem;color:var(--muted);overflow-wrap:anywhere}
 .list{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
 .item{display:flex;flex-direction:column;gap:6px;min-width:0}
 .item img{width:100%;aspect-ratio:1/1;object-fit:cover;border:1px solid var(--line);border-radius:4px;background:var(--surface)}
@@ -55,11 +79,17 @@ h1{font:400 1.35rem/1.1 var(--display);letter-spacing:.06em;margin:0}
 .item .row{display:flex;gap:6px}
 .item .row .btn{flex:1;padding:8px;font-size:.8rem;border-radius:8px}
 .item .row .btn.rm{flex:0 0 auto;color:var(--danger)}
-.empty{color:var(--muted);text-align:center;padding:32px 8px;border:1px dashed var(--line);border-radius:8px}
-.listhead{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
-.listhead p{margin:0;color:var(--muted);font-size:.85rem}
-.toast{position:fixed;left:50%;bottom:max(20px,env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:.85rem;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
-.toast.on{opacity:1}
+.empty{color:var(--muted);text-align:center;padding:28px 8px;border:1px dashed var(--line);border-radius:8px}
+.settings{display:flex;flex-direction:column;gap:12px;border-top:1px solid var(--line);padding-top:16px;margin-top:8px}
+.settings h2{font:400 1rem var(--display);letter-spacing:.06em;margin:0}
+.setrow{display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap}
+.setrow p{margin:0;font-size:.9rem;min-width:0}
+.iconprev{width:48px;height:48px;border-radius:11px;border:1px solid var(--line);object-fit:cover}
+.toast{position:fixed;left:50%;bottom:max(20px,calc(env(safe-area-inset-bottom) + 12px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 8px 8px 16px;border-radius:999px;font-size:.85rem;opacity:0;transition:opacity .2s;pointer-events:none;max-width:92vw;display:flex;align-items:center;gap:10px}
+.toast.on{opacity:1;pointer-events:auto}
+.toast button{background:none;border:1px solid var(--bg);color:var(--bg);border-radius:999px;padding:4px 10px;font:600 .8rem var(--body);cursor:pointer}
+.toast button[hidden]{display:none}
+.toast:not(:has(button:not([hidden]))){padding-right:16px}
 @media (prefers-reduced-motion:reduce){.toast{transition:none}}
 </style>
 </head>
@@ -69,34 +99,74 @@ h1{font:400 1.35rem/1.1 var(--display);letter-spacing:.06em;margin:0}
     <h1>Pesca un Artwork</h1>
     <div class="tabs" role="tablist">
       <button id="tab-draw" role="tab" aria-selected="true">Pesca</button>
+      <button id="tab-search" role="tab" aria-selected="false">Cerca</button>
       <button id="tab-list" role="tab" aria-selected="false">Da scaricare <span id="favcount">0</span></button>
     </div>
   </header>
 
-  <section id="view-draw" class="wrap" style="gap:14px">
+  <!-- PESCA -->
+  <section id="view-draw" class="wrap" style="gap:14px;width:100%">
+    <div id="poolchip" hidden><span class="chip"><span id="pooltext"></span><button id="poolclear" aria-label="Togli il filtro">✕</button></span></div>
     <div class="frame">
       <img id="art" alt="" hidden>
       <div class="msg" id="artmsg">Preparo l'elenco delle carte…</div>
     </div>
     <div class="meta">
       <p class="name" id="name">&nbsp;</p>
+      <span class="sub" id="itname"></span>
       <span class="code" id="code"></span>
     </div>
     <div class="actions">
-      <button class="btn primary" id="draw" disabled>Pesca un artwork</button>
+      <button class="btn primary" id="draw" disabled>Pesca</button>
       <button class="btn" id="fav" disabled aria-pressed="false">☆ Salva</button>
+      <button class="btn discard" id="discard" disabled>✕ Scarta</button>
     </div>
-    <p class="status" id="status"></p>
+    <div class="bar">
+      <span class="status" id="status"></span>
+      <button class="link" id="seticon" disabled>Usa come icona dell'app</button>
+    </div>
   </section>
 
-  <section id="view-list" hidden>
-    <div class="listhead" style="margin-bottom:12px">
-      <p id="listinfo">Gli artwork salvati restano su questo telefono.</p>
+  <!-- CERCA -->
+  <section id="view-search" class="wrap" style="width:100%" hidden>
+    <div class="search">
+      <input type="search" id="q" placeholder="Nome, archetipo o tipo (es. drago, Blue-Eyes)" autocomplete="off" enterkeyhint="search">
+      <select id="kind" aria-label="Tipo di carta">
+        <option value="">Tutte</option>
+        <option value="m">Mostri</option>
+        <option value="spell">Magie</option>
+        <option value="trap">Trappole</option>
+      </select>
     </div>
+    <div class="bar">
+      <span class="status" id="rescount"></span>
+      <label class="check"><input type="checkbox" id="usepool"> Pesca solo tra questi</label>
+    </div>
+    <div class="results" id="results" hidden></div>
+    <div class="empty" id="searchhint">Scrivi il nome di una carta, in inglese o in italiano, oppure un archetipo o un tipo di mostro. Tocca un risultato per vederne l'artwork.</div>
+  </section>
+
+  <!-- DA SCARICARE -->
+  <section id="view-list" class="wrap" style="width:100%" hidden>
+    <p class="status" id="listinfo" style="margin:0">Gli artwork salvati restano su questo telefono.</p>
     <div class="list" id="list"></div>
+    <div class="settings">
+      <h2>Impostazioni</h2>
+      <div class="setrow">
+        <p id="discinfo">Nessun artwork scartato.</p>
+        <button class="btn small" id="undiscard" hidden>Ripristina tutti</button>
+      </div>
+      <div class="setrow">
+        <div style="display:flex;align-items:center;gap:12px;min-width:0">
+          <img class="iconprev" id="iconprev" src="apple-touch-icon.png" alt="Icona attuale">
+          <p id="iconinfo">Icona predefinita</p>
+        </div>
+        <button class="btn small" id="iconreset" hidden>Ripristina icona</button>
+      </div>
+    </div>
   </section>
 </div>
-<div class="toast" id="toast" role="status"></div>
+<div class="toast" id="toast" role="status"><span id="toasttext"></span><button id="toastundo" hidden>Annulla</button></div>
 
 <script>
 const API = 'https://db.ygoprodeck.com/api/v7/';
@@ -104,24 +174,28 @@ const IMG = 'https://images.ygoprodeck.com/images/cards_cropped/';
 const CARD_PAGE = 'https://ygoprodeck.com/card/?search=';
 const CACHE_LIMIT = 500;          // artwork visti tenuti in memoria (i preferiti non contano)
 const CHECK_EVERY = 24*3600*1000; // controllo nuove carte al massimo una volta al giorno
-const LS_KEY = 'ygoart.index.v1';
+const INDEX_FORMAT = 2;
 
 const $ = id => document.getElementById(id);
-let index = null;      // [[id, nome], ...]
-let fallback = false;  // true se l'elenco completo non è scaricabile
-let current = null;    // {id, name}
-let currentURL = null;
-let busy = false;
+// voce dell'indice: [idImmagine, nomeEN, nomeIT, frameType, race, attributo, archetipo, variante, totaleVarianti]
+let index = null, byId = new Map();
+let fallback = false;
+let discarded = new Set();
+let pool = null, poolLabel = '';  // filtro di pesca
+let current = null, currentURL = null, busy = false;
+
+try{ localStorage.removeItem('ygoart.index.v1'); }catch(e){}
 
 /* ---------- IndexedDB ---------- */
 let dbp = null;
 function db(){
   if (dbp) return dbp;
   dbp = new Promise((res, rej) => {
-    const r = indexedDB.open('ygoart', 1);
+    const r = indexedDB.open('ygoart', 2);
     r.onupgradeneeded = () => {
-      r.result.createObjectStore('images', {keyPath:'id'});
-      r.result.createObjectStore('favs', {keyPath:'id'});
+      const d = r.result;
+      for (const s of ['images','favs','discarded']) if (!d.objectStoreNames.contains(s)) d.createObjectStore(s, {keyPath:'id'});
+      if (!d.objectStoreNames.contains('meta')) d.createObjectStore('meta');
     };
     r.onsuccess = () => res(r.result);
     r.onerror = () => rej(r.error);
@@ -141,13 +215,11 @@ async function tx(store, mode, fn){
 }
 const idbGet = (s, k) => tx(s, 'readonly', st => st.get(k));
 const idbAll = s => tx(s, 'readonly', st => st.getAll());
-const idbPut = (s, v) => tx(s, 'readwrite', st => st.put(v));
+const idbPut = (s, v, k) => tx(s, 'readwrite', st => k === undefined ? st.put(v) : st.put(v, k));
 const idbDel = (s, k) => tx(s, 'readwrite', st => st.delete(k));
+const idbClear = s => tx(s, 'readwrite', st => st.clear());
 
-/* ---------- Elenco carte ---------- */
-function readLS(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)); }catch(e){ return null; } }
-function writeLS(v){ try{ localStorage.setItem(LS_KEY, JSON.stringify(v)); }catch(e){} }
-
+/* ---------- Elenco carte (scaricato una volta, poi controllato al massimo una volta al giorno) ---------- */
 async function dbVersion(){
   const r = await fetch(API + 'checkDBVer.php');
   const j = await r.json();
@@ -159,27 +231,39 @@ async function downloadIndex(){
   const r = await fetch(API + 'cardinfo.php');
   if (!r.ok) throw new Error('HTTP ' + r.status);
   const j = await r.json();
+  let it = new Map();
+  try{
+    $('artmsg').textContent = 'Scarico i nomi italiani…';
+    const ri = await fetch(API + 'cardinfo.php?language=it');
+    if (ri.ok){ const ji = await ri.json(); for (const c of ji.data || []) it.set(c.id, c.name); }
+  }catch(e){}
   const out = [];
-  for (const c of j.data || []) for (const im of c.card_images || [])
-    if (im.image_url_cropped) out.push([im.id, c.name]);
+  for (const c of j.data || []){
+    const imgs = (c.card_images || []).filter(i => i.image_url_cropped);
+    imgs.forEach((im, k) => {
+      const itn = it.get(c.id);
+      out.push([im.id, c.name, itn && itn !== c.name ? itn : '', c.frameType || '', c.race || '', c.attribute || '', c.archetype || '', k + 1, imgs.length]);
+    });
+  }
   if (!out.length) throw new Error('elenco vuoto');
   return out;
 }
 async function loadIndex(){
-  const saved = readLS();
+  const saved = await idbGet('meta', 'index');
+  const ok = saved && saved.format === INDEX_FORMAT && saved.cards;
   const now = Date.now();
-  if (saved && saved.cards && now - saved.checked < CHECK_EVERY) return saved.cards;
+  if (ok && now - saved.checked < CHECK_EVERY) return saved.cards;
   try{
     const ver = await dbVersion().catch(() => null);
-    if (saved && saved.cards && ver && ver === saved.ver){
-      writeLS({...saved, checked: now});
+    if (ok && ver && ver === saved.ver){
+      await idbPut('meta', {...saved, checked: now}, 'index');
       return saved.cards;
     }
     const cards = await downloadIndex();
-    writeLS({ver: ver || '', checked: now, cards});
+    await idbPut('meta', {format: INDEX_FORMAT, ver: ver || '', checked: now, cards}, 'index');
     return cards;
   }catch(e){
-    if (saved && saved.cards) return saved.cards;
+    if (ok) return saved.cards;
     throw e;
   }
 }
@@ -195,7 +279,7 @@ async function getBlob(id){
     await idbPut('images', {id, blob, ts: Date.now()});
     trimCache();
     return blob;
-  }catch(e){ return null; } // il server non permette la lettura diretta: si usa il link
+  }catch(e){ return null; }
 }
 async function trimCache(){
   const all = await idbAll('images'); if (!all) return;
@@ -205,43 +289,92 @@ async function trimCache(){
 }
 
 /* ---------- Pesca ---------- */
+function toCard(e){ return {id:e[0], name:e[1], it:e[2], race:e[4], attr:e[5], arch:e[6], v:e[7], k:e[8]}; }
 async function pickRandom(){
   if (!fallback){
-    let e; do { e = index[Math.floor(Math.random()*index.length)]; }
-    while (index.length > 1 && current && e[0] === current.id);
-    return {id: e[0], name: e[1]};
+    const src = pool || index;
+    const avail = src.filter(e => !discarded.has(e[0]) && (!current || e[0] !== current.id || src.length === 1));
+    if (!avail.length) return null;
+    return toCard(avail[Math.floor(Math.random()*avail.length)]);
   }
-  const r = await fetch(API + 'randomcard.php');
-  const j = await r.json();
-  const c = j.data ? j.data[0] : j;
-  const im = (c.card_images || []).find(i => i.image_url_cropped) || (c.card_images || [])[0];
-  return {id: im.id, name: c.name};
+  for (let i = 0; i < 5; i++){
+    const r = await fetch(API + 'randomcard.php');
+    const j = await r.json();
+    const c = j.data ? j.data[0] : j;
+    const ims = (c.card_images || []).filter(i => i.image_url_cropped);
+    const im = ims[Math.floor(Math.random()*ims.length)] || (c.card_images || [])[0];
+    if (!discarded.has(im.id)) return {id: im.id, name: c.name, it:'', v: ims.indexOf(im)+1, k: ims.length};
+  }
+  return null;
+}
+async function show(card){
+  $('artmsg').hidden = false; $('artmsg').textContent = 'Carico…';
+  const blob = await getBlob(card.id);
+  if (currentURL && currentURL.startsWith('blob:')) URL.revokeObjectURL(currentURL);
+  currentURL = blob ? URL.createObjectURL(blob) : IMG + card.id + '.jpg';
+  const img = $('art');
+  await new Promise(res => { img.onload = res; img.onerror = res; img.src = currentURL; });
+  img.alt = 'Artwork di ' + card.name; img.hidden = false; $('artmsg').hidden = true;
+  img.closest('.frame').classList.add('loaded');
+  current = card; current.hasBlob = !!blob;
+  $('name').textContent = card.name;
+  $('itname').textContent = card.it || '';
+  const code = $('code'); code.innerHTML = '';
+  const a = document.createElement('a');
+  a.href = CARD_PAGE + encodeURIComponent(card.name); a.target = '_blank'; a.rel = 'noopener';
+  a.textContent = '#' + String(card.id).padStart(8, '0');
+  code.append(a);
+  if (card.k > 1){
+    const s = document.createElement('span'); s.className = 'alt';
+    s.textContent = card.v === 1 ? 'Originale · 1 di ' + card.k : 'Alternativo · ' + card.v + ' di ' + card.k;
+    code.append(s);
+  }
+  $('discard').disabled = false;
+  $('seticon').disabled = !blob;
+  await refreshFavButton();
 }
 async function draw(){
   if (busy) return; busy = true;
-  $('draw').disabled = true; $('fav').disabled = true;
-  $('artmsg').hidden = false; $('artmsg').textContent = 'Pesco…';
+  $('draw').disabled = $('fav').disabled = $('discard').disabled = true;
   try{
     const card = await pickRandom();
-    const blob = await getBlob(card.id);
-    if (currentURL && currentURL.startsWith('blob:')) URL.revokeObjectURL(currentURL);
-    currentURL = blob ? URL.createObjectURL(blob) : IMG + card.id + '.jpg';
-    const img = $('art');
-    await new Promise((res) => { img.onload = res; img.onerror = res; img.src = currentURL; });
-    img.alt = 'Artwork di ' + card.name; img.hidden = false; $('artmsg').hidden = true;
-    current = card;
-    $('name').textContent = card.name;
-    $('code').innerHTML = '';
-    const a = document.createElement('a');
-    a.href = CARD_PAGE + encodeURIComponent(card.name); a.target = '_blank'; a.rel = 'noopener';
-    a.textContent = '#' + String(card.id).padStart(8, '0');
-    $('code').append(a);
-    await refreshFavButton();
+    if (!card){
+      $('art').hidden = true; $('artmsg').hidden = false; $('art').closest('.frame').classList.remove('loaded');
+      $('artmsg').textContent = pool ? 'Hai visto o scartato tutti gli artwork di questo filtro. Togli il filtro per pescare tra tutti.' : 'Hai scartato tutti gli artwork disponibili.';
+      current = null; refreshFavButton();
+    } else await show(card);
   }catch(e){
-    $('artmsg').hidden = false; $('art').hidden = true;
+    $('artmsg').hidden = false; $('art').hidden = true; $('art').closest('.frame').classList.remove('loaded');
     $('artmsg').textContent = 'Non riesco a raggiungere il sito delle carte. Controlla la connessione e riprova.';
   }
   busy = false; $('draw').disabled = false;
+}
+
+/* ---------- Scarta ---------- */
+async function discardCurrent(){
+  if (!current || busy) return;
+  const c = current;
+  discarded.add(c.id);
+  await idbPut('discarded', {id: c.id, name: c.name, ts: Date.now()});
+  const wasFav = await idbGet('favs', c.id);
+  if (wasFav) await idbDel('favs', c.id);
+  const img = await idbGet('images', c.id);
+  await idbDel('images', c.id);           // libera spazio subito
+  updateCount(); updateDiscInfo();
+  toast('Scartato: non lo vedrai più', async () => {
+    discarded.delete(c.id);
+    await idbDel('discarded', c.id);
+    if (img) await idbPut('images', img);
+    if (wasFav) await idbPut('favs', wasFav);
+    updateCount(); updateDiscInfo();
+    await show(c);
+  });
+  draw();
+}
+function updateDiscInfo(){
+  const n = discarded.size;
+  $('discinfo').textContent = n ? (n === 1 ? '1 artwork scartato.' : n.toLocaleString('it-IT') + ' artwork scartati.') : 'Nessun artwork scartato.';
+  $('undiscard').hidden = !n;
 }
 
 /* ---------- Preferiti ---------- */
@@ -258,7 +391,7 @@ async function toggleFav(){
   if (!current) return;
   const on = await idbGet('favs', current.id);
   if (on){ await idbDel('favs', current.id); toast('Tolto dalla lista'); }
-  else { await idbPut('favs', {...current, ts: Date.now()}); toast('Aggiunto alla lista da scaricare'); }
+  else { await idbPut('favs', {id: current.id, name: current.name, ts: Date.now()}); toast('Aggiunto alla lista da scaricare'); }
   await refreshFavButton(); updateCount();
 }
 async function updateCount(){
@@ -284,6 +417,8 @@ async function renderList(){
     if (hit && hit.blob){ src = URL.createObjectURL(hit.blob); listURLs.push(src); }
     const el = document.createElement('div'); el.className = 'item';
     const img = document.createElement('img'); img.src = src; img.alt = 'Artwork di ' + f.name; img.loading = 'lazy';
+    img.style.cursor = 'pointer';
+    img.onclick = () => { const e = byId.get(f.id); showTab('draw'); show(e ? toCard(e) : {id:f.id, name:f.name}); };
     const n = document.createElement('div'); n.className = 'n'; n.textContent = f.name;
     const row = document.createElement('div'); row.className = 'row';
     const dl = document.createElement('button'); dl.className = 'btn'; dl.textContent = 'Scarica';
@@ -311,29 +446,145 @@ async function saveFile(f){
   setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
 
+/* ---------- Cerca ---------- */
+const norm = s => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+const RACE_IT = {dragon:'drago',spellcaster:'incantatore',warrior:'guerriero','beast-warrior':'guerriero-bestia',beast:'bestia',fiend:'demone',fairy:'fata',zombie:'zombie',machine:'macchina',aqua:'acqua',pyro:'pyro',rock:'roccia','winged beast':'bestia alata',plant:'pianta',insect:'insetto',thunder:'tuono',dinosaur:'dinosauro',fish:'pesce','sea serpent':'serpente marino',reptile:'rettile',psychic:'psichico','divine-beast':'bestia divina',wyrm:'wyrm',cyberse:'cyberse',illusion:'illusione'};
+let searchKeys = null;
+function buildKeys(){
+  searchKeys = index.map(e => norm([e[1], e[2], e[6], e[4], RACE_IT[norm(e[4])] || '', e[5]].join(' | ')));
+}
+function kindOf(e){ return e[3] === 'spell' ? 'spell' : e[3] === 'trap' ? 'trap' : 'm'; }
+let lastResults = [];
+function runSearch(){
+  if (!index){ $('searchhint').textContent = "La ricerca richiede l'elenco completo delle carte, che non è disponibile in questo momento."; return; }
+  if (!searchKeys) buildKeys();
+  const words = norm($('q').value).split(/\s+/).filter(Boolean);
+  const kind = $('kind').value;
+  const box = $('results');
+  if (!words.length && !kind){
+    lastResults = []; box.hidden = true; $('searchhint').hidden = false; $('rescount').textContent = '';
+    return;
+  }
+  const res = [];
+  for (let i = 0; i < index.length; i++){
+    const e = index[i];
+    if (discarded.has(e[0])) continue;
+    if (kind && kindOf(e) !== kind) continue;
+    if (words.every(w => searchKeys[i].includes(w))) res.push(e);
+  }
+  lastResults = res;
+  $('searchhint').hidden = true;
+  $('rescount').textContent = res.length ? res.length.toLocaleString('it-IT') + (res.length === 1 ? ' artwork' : ' artwork') : 'Nessun risultato';
+  box.innerHTML = ''; box.hidden = !res.length;
+  for (const e of res.slice(0, 80)){
+    const b = document.createElement('button');
+    const n = document.createElement('span'); n.className = 'rn';
+    n.textContent = e[1] + (e[8] > 1 ? (e[7] === 1 ? '' : ' · alt. ' + e[7]) : '');
+    const t = document.createElement('span'); t.className = 'rt';
+    t.textContent = [e[2], e[6], e[4], e[5]].filter(Boolean).join(' · ');
+    b.append(n, t);
+    b.onclick = () => { showTab('draw'); if (!busy){ busy = true; show(toCard(e)).finally(() => busy = false); } };
+    box.append(b);
+  }
+  if (res.length > 80){
+    const m = document.createElement('div'); m.className = 'rt'; m.style.padding = '10px 12px';
+    m.textContent = 'Mostro i primi 80. Restringi la ricerca o usa "Pesca solo tra questi".';
+    box.append(m);
+  }
+  if ($('usepool').checked) applyPool();
+}
+function applyPool(){
+  if ($('usepool').checked && lastResults.length){
+    pool = lastResults.slice();
+    const q = $('q').value.trim(), k = $('kind').selectedOptions[0].text;
+    poolLabel = [q ? '"' + q + '"' : '', $('kind').value ? k : ''].filter(Boolean).join(' · ');
+  } else pool = null;
+  renderPoolChip();
+}
+function renderPoolChip(){
+  $('poolchip').hidden = !pool;
+  if (pool) $('pooltext').textContent = 'Filtro: ' + poolLabel + ' (' + pool.length.toLocaleString('it-IT') + ')';
+}
+let st;
+$('q').addEventListener('input', () => { clearTimeout(st); st = setTimeout(runSearch, 200); });
+$('kind').addEventListener('change', runSearch);
+$('usepool').addEventListener('change', () => { applyPool(); if (pool) toast('Le prossime pescate useranno solo questi risultati'); });
+$('poolclear').onclick = () => { pool = null; $('usepool').checked = false; renderPoolChip(); };
+
+/* ---------- Icona dell'app ---------- */
+async function iconFromBlob(blob){
+  const bmp = await createImageBitmap(blob);
+  const S = 512, c = document.createElement('canvas'); c.width = c.height = S;
+  const g = c.getContext('2d');
+  const s = Math.min(bmp.width, bmp.height);
+  g.drawImage(bmp, (bmp.width - s)/2, (bmp.height - s)/2, s, s, 0, 0, S, S);
+  return c.toDataURL('image/png');
+}
+function applyIcon(dataURL, name){
+  const href = dataURL || 'apple-touch-icon.png';
+  $('ic-apple').href = href;
+  $('ic-fav').href = dataURL || 'favicon.png';
+  $('ic-big').href = dataURL || 'icon-512.png';
+  $('iconprev').src = href;
+  $('iconinfo').textContent = dataURL ? 'Icona: ' + name : 'Icona predefinita';
+  $('iconreset').hidden = !dataURL;
+}
+async function setIcon(){
+  if (!current) return;
+  const blob = await getBlob(current.id);
+  if (!blob){ toast("Non riesco a usare quest'immagine come icona"); return; }
+  try{
+    const url = await iconFromBlob(blob);
+    await idbPut('meta', {url, name: current.name}, 'icon');
+    applyIcon(url, current.name);
+    toast("Icona impostata. Rimuovi l'app dalla Home e aggiungila di nuovo");
+  }catch(e){ toast("Non riesco a usare quest'immagine come icona"); }
+}
+$('seticon').onclick = setIcon;
+$('iconreset').onclick = async () => { await idbDel('meta', 'icon'); applyIcon(null); toast('Icona predefinita ripristinata'); };
+
 /* ---------- UI ---------- */
-let tt;
-function toast(t){ const el = $('toast'); el.textContent = t; el.classList.add('on'); clearTimeout(tt); tt = setTimeout(() => el.classList.remove('on'), 1800); }
+let tt, undoFn = null;
+function toast(t, undo){
+  const el = $('toast'); $('toasttext').textContent = t;
+  undoFn = undo || null; $('toastundo').hidden = !undo;
+  el.classList.add('on'); clearTimeout(tt);
+  tt = setTimeout(() => { el.classList.remove('on'); undoFn = null; }, undo ? 4500 : 2200);
+}
+$('toastundo').onclick = () => { const f = undoFn; undoFn = null; $('toast').classList.remove('on'); if (f) f(); };
 function showTab(which){
-  const list = which === 'list';
-  $('tab-draw').setAttribute('aria-selected', !list);
-  $('tab-list').setAttribute('aria-selected', list);
-  $('view-draw').hidden = list; $('view-list').hidden = !list;
-  if (list) renderList();
+  for (const t of ['draw','search','list']){
+    $('tab-' + t).setAttribute('aria-selected', t === which);
+    $('view-' + t).hidden = t !== which;
+  }
+  if (which === 'list') renderList();
+  if (which === 'search') setTimeout(() => $('q').focus(), 50);
 }
 $('tab-draw').onclick = () => showTab('draw');
+$('tab-search').onclick = () => showTab('search');
 $('tab-list').onclick = () => showTab('list');
 $('draw').onclick = draw;
 $('fav').onclick = toggleFav;
+$('discard').onclick = discardCurrent;
+$('undiscard').onclick = async () => {
+  discarded.clear(); await idbClear('discarded'); updateDiscInfo(); searchKeys && runSearch();
+  toast('Tutti gli artwork scartati sono tornati disponibili');
+};
 document.addEventListener('keydown', e => {
   if (e.code === 'Space' && !$('view-draw').hidden && e.target === document.body){ e.preventDefault(); draw(); }
 });
 
 (async function start(){
   updateCount();
+  const ic = await idbGet('meta', 'icon');
+  if (ic && ic.url) applyIcon(ic.url, ic.name);
+  discarded = new Set((((await idbAll('discarded')) || [])).map(d => d.id));
+  updateDiscInfo();
   try{
     index = await loadIndex();
-    $('status').textContent = index.length.toLocaleString('it-IT') + ' artwork nell\'elenco';
+    byId = new Map(index.map(e => [e[0], e]));
+    const alts = index.filter(e => e[7] > 1).length;
+    $('status').textContent = index.length.toLocaleString('it-IT') + ' artwork, di cui ' + alts.toLocaleString('it-IT') + ' alternativi';
   }catch(e){
     fallback = true;
     $('status').textContent = 'Elenco completo non disponibile: pesco una carta alla volta dal sito.';

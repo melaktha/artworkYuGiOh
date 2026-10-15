@@ -1,7 +1,12 @@
 # artworkYuGiOh
 
-Mini-app per il telefono: a ogni tocco mostra l'artwork di una carta Yu-Gi-Oh! casuale.
-Gli artwork si possono salvare in una lista "Da scaricare" che resta sul telefono.
+Mini-app per il telefono: a ogni tocco mostra l'artwork di una carta Yu-Gi-Oh! casuale,
+compresi gli artwork alternativi.
+
+- **Salva**: mette l'artwork nella lista "Da scaricare", sul telefono.
+- **Scarta**: l'artwork non verrà più pescato e la sua immagine viene cancellata dalla memoria.
+- **Cerca**: per nome (inglese o italiano), archetipo o tipo; si può pescare solo tra i risultati.
+- **Usa come icona dell'app**: imposta l'artwork come icona (poi va riaggiunta alla Home).
 
 App: https://melaktha.github.io/artworkYuGiOh/
 
