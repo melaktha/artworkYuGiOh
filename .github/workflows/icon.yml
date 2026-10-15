@@ -1,0 +1,49 @@
+name: Genera icona dell'app
+
+on:
+  push:
+    branches: [main]
+    paths: [icon-id.txt]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  icon:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pillow
+      - name: Crea le icone dalla carta scelta
+        run: |
+          ID=$(tr -cd '0-9' < icon-id.txt)
+          if [ -z "$ID" ] || [ "$ID" = "0" ]; then
+            cp .github/icon-default/*.png .
+            VER=default
+          else
+            # una sola immagine scaricata, come chiede YGOPRODeck
+            curl -fsSL -A "artworkYuGiOh-icon" -o art.jpg "https://images.ygoprodeck.com/images/cards_cropped/$ID.jpg"
+            python - <<'PY'
+          from PIL import Image
+          im = Image.open('art.jpg').convert('RGB')
+          w, h = im.size; s = min(w, h)
+          im = im.crop(((w - s)//2, (h - s)//2, (w - s)//2 + s, (h - s)//2 + s))
+          for size, name in [(512, 'icon-512.png'), (180, 'apple-touch-icon.png'), (32, 'favicon.png')]:
+              im.resize((size, size), Image.LANCZOS).save(name, optimize=True)
+          PY
+            rm art.jpg
+            VER=$ID
+          fi
+          # cambia il numero di versione nei link, così il telefono non usa l'icona vecchia in memoria
+          sed -i -E "s/(apple-touch-icon|favicon|icon-512)\.png\?v=[A-Za-z0-9]+/\1.png?v=$VER/g" index.html
+      - name: Salva le icone
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "Icona dell'app: $(tr -cd '0-9' < icon-id.txt)"
+          git push

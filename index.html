@@ -8,9 +8,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Artwork">
-<link id="ic-apple" rel="apple-touch-icon" href="apple-touch-icon.png">
-<link id="ic-fav" rel="icon" href="favicon.png">
-<link id="ic-big" rel="icon" sizes="512x512" href="icon-512.png">
+<link id="ic-apple" rel="apple-touch-icon" href="apple-touch-icon.png?v=default">
+<link id="ic-fav" rel="icon" href="favicon.png?v=default">
+<link id="ic-big" rel="icon" sizes="512x512" href="icon-512.png?v=default">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus+SC&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
@@ -158,10 +158,11 @@ input[type=search],select{font:16px var(--body);color:var(--fg);background:var(-
       </div>
       <div class="setrow">
         <div style="display:flex;align-items:center;gap:12px;min-width:0">
-          <img class="iconprev" id="iconprev" src="apple-touch-icon.png" alt="Icona attuale">
-          <p id="iconinfo">Icona predefinita</p>
+          <img class="iconprev" id="iconprev" src="apple-touch-icon.png?v=default" alt="Icona attuale">
+          <p>Icona attuale dell'app</p>
         </div>
-        <button class="btn small" id="iconreset" hidden>Ripristina icona</button>
+      </div>
+      <p class="status" style="margin:0">Per cambiarla tocca "Usa come icona dell'app" sotto un artwork: il codice della carta viene copiato e si apre il file <span style="font-family:var(--mono)">icon-id.txt</span> su GitHub. Incolla il codice al posto di quello che c'è, salva con "Commit changes" e dopo un paio di minuti togli l'app dalla Home e aggiungila di nuovo. Scrivi 0 per tornare all'icona predefinita.</p>
       </div>
     </div>
   </section>
@@ -330,7 +331,7 @@ async function show(card){
     code.append(s);
   }
   $('discard').disabled = false;
-  $('seticon').disabled = !blob;
+  $('seticon').disabled = false;
   await refreshFavButton();
 }
 async function draw(){
@@ -511,37 +512,20 @@ $('kind').addEventListener('change', runSearch);
 $('usepool').addEventListener('change', () => { applyPool(); if (pool) toast('Le prossime pescate useranno solo questi risultati'); });
 $('poolclear').onclick = () => { pool = null; $('usepool').checked = false; renderPoolChip(); };
 
-/* ---------- Icona dell'app ---------- */
-async function iconFromBlob(blob){
-  const bmp = await createImageBitmap(blob);
-  const S = 512, c = document.createElement('canvas'); c.width = c.height = S;
-  const g = c.getContext('2d');
-  const s = Math.min(bmp.width, bmp.height);
-  g.drawImage(bmp, (bmp.width - s)/2, (bmp.height - s)/2, s, s, 0, 0, S, S);
-  return c.toDataURL('image/png');
-}
-function applyIcon(dataURL, name){
-  const href = dataURL || 'apple-touch-icon.png';
-  $('ic-apple').href = href;
-  $('ic-fav').href = dataURL || 'favicon.png';
-  $('ic-big').href = dataURL || 'icon-512.png';
-  $('iconprev').src = href;
-  $('iconinfo').textContent = dataURL ? 'Icona: ' + name : 'Icona predefinita';
-  $('iconreset').hidden = !dataURL;
-}
+/* ---------- Icona dell'app ----------
+   Le icone della schermata Home vengono lette dai file sul server, quindi la scelta passa da GitHub:
+   il file icon-id.txt contiene il codice della carta e un'azione automatica genera le icone. */
+const ICON_EDIT = 'https://github.com/melaktha/artworkYuGiOh/edit/main/icon-id.txt';
 async function setIcon(){
   if (!current) return;
-  const blob = await getBlob(current.id);
-  if (!blob){ toast("Non riesco a usare quest'immagine come icona"); return; }
-  try{
-    const url = await iconFromBlob(blob);
-    await idbPut('meta', {url, name: current.name}, 'icon');
-    applyIcon(url, current.name);
-    toast("Icona impostata. Rimuovi l'app dalla Home e aggiungila di nuovo");
-  }catch(e){ toast("Non riesco a usare quest'immagine come icona"); }
+  const code = String(current.id);
+  let copied = false;
+  try{ await navigator.clipboard.writeText(code); copied = true; }catch(e){}
+  window.open(ICON_EDIT, '_blank', 'noopener');
+  toast(copied ? 'Codice ' + code + ' copiato: incollalo nel file e salva' : 'Scrivi ' + code + ' nel file e salva');
 }
 $('seticon').onclick = setIcon;
-$('iconreset').onclick = async () => { await idbDel('meta', 'icon'); applyIcon(null); toast('Icona predefinita ripristinata'); };
+idbDel('meta', 'icon');   // pulizia della vecchia icona salvata sul telefono
 
 /* ---------- UI ---------- */
 let tt, undoFn = null;
@@ -576,8 +560,6 @@ document.addEventListener('keydown', e => {
 
 (async function start(){
   updateCount();
-  const ic = await idbGet('meta', 'icon');
-  if (ic && ic.url) applyIcon(ic.url, ic.name);
   discarded = new Set((((await idbAll('discarded')) || [])).map(d => d.id));
   updateDiscInfo();
   try{
