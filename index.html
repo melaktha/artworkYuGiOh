@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Pesca un Artwork</title>
+<meta name="theme-color" content="#13111d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Artwork">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus+SC&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Una colonna stretta: cornice dell'artwork al centro, azioni sotto, lista "da scaricare" in una seconda scheda */
+:root{
+  --bg:#eef0f5; --surface:#ffffff; --fg:#1b1830; --muted:#6a6680; --line:#d9dae5;
+  --gold:#a9781f; --gold-soft:#f3e7cc; --danger:#b3392f;
+  --display:"Marcellus SC","Trajan Pro",Georgia,serif;
+  --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#13111d; --surface:#1d1a2b; --fg:#eceaf4; --muted:#9a96b0; --line:#2e2a42;
+  --gold:#d9a944; --gold-soft:#3a2f1a; --danger:#e0695e; color-scheme:dark;
+}}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--fg);font:16px/1.5 var(--body);
+  padding:max(12px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));}
+.wrap{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font:400 1.35rem/1.1 var(--display);letter-spacing:.06em;margin:0}
+.tabs{display:flex;border:1px solid var(--line);border-radius:999px;padding:3px;background:var(--surface)}
+.tabs button{border:0;background:none;color:var(--muted);font:500 .85rem var(--body);padding:6px 14px;border-radius:999px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--fg);color:var(--bg)}
+.frame{position:relative;aspect-ratio:1/1;max-width:100%;background:var(--surface);border:1px solid var(--line);padding:10px;border-radius:4px}
+.frame::before{content:"";position:absolute;inset:6px;border:1px solid var(--gold);opacity:.55;pointer-events:none;border-radius:2px}
+.frame img{width:100%;height:100%;object-fit:cover;display:block;border-radius:1px;background:var(--bg)}
+.frame .msg{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:24px;color:var(--muted);font-size:.95rem}
+.meta{display:flex;flex-direction:column;gap:2px;min-height:3.4em}
+.name{font:400 1.3rem/1.25 var(--display);letter-spacing:.03em;text-wrap:balance;margin:0}
+.code{font:400 .8rem var(--mono);color:var(--muted);letter-spacing:.04em}
+.code a{color:inherit}
+.actions{display:grid;grid-template-columns:1fr auto;gap:10px}
+.btn{font:600 1rem var(--body);border-radius:10px;padding:14px 18px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--fg)}
+.btn:focus-visible,.tabs button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.btn.primary{background:var(--fg);color:var(--bg);border-color:var(--fg);letter-spacing:.02em}
+.btn.saved{background:var(--gold-soft);border-color:var(--gold);color:var(--fg)}
+.btn:disabled{opacity:.5;cursor:default}
+.status{font-size:.8rem;color:var(--muted);text-align:center}
+.list{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.item{display:flex;flex-direction:column;gap:6px;min-width:0}
+.item img{width:100%;aspect-ratio:1/1;object-fit:cover;border:1px solid var(--line);border-radius:4px;background:var(--surface)}
+.item .n{font-size:.85rem;line-height:1.3;overflow-wrap:anywhere}
+.item .row{display:flex;gap:6px}
+.item .row .btn{flex:1;padding:8px;font-size:.8rem;border-radius:8px}
+.item .row .btn.rm{flex:0 0 auto;color:var(--danger)}
+.empty{color:var(--muted);text-align:center;padding:32px 8px;border:1px dashed var(--line);border-radius:8px}
+.listhead{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.listhead p{margin:0;color:var(--muted);font-size:.85rem}
+.toast{position:fixed;left:50%;bottom:max(20px,env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:.85rem;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
+.toast.on{opacity:1}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Pesca un Artwork</h1>
+    <div class="tabs" role="tablist">
+      <button id="tab-draw" role="tab" aria-selected="true">Pesca</button>
+      <button id="tab-list" role="tab" aria-selected="false">Da scaricare <span id="favcount">0</span></button>
+    </div>
+  </header>
+
+  <section id="view-draw" class="wrap" style="gap:14px">
+    <div class="frame">
+      <img id="art" alt="" hidden>
+      <div class="msg" id="artmsg">Preparo l'elenco delle carte…</div>
+    </div>
+    <div class="meta">
+      <p class="name" id="name">&nbsp;</p>
+      <span class="code" id="code"></span>
+    </div>
+    <div class="actions">
+      <button class="btn primary" id="draw" disabled>Pesca un artwork</button>
+      <button class="btn" id="fav" disabled aria-pressed="false">☆ Salva</button>
+    </div>
+    <p class="status" id="status"></p>
+  </section>
+
+  <section id="view-list" hidden>
+    <div class="listhead" style="margin-bottom:12px">
+      <p id="listinfo">Gli artwork salvati restano su questo telefono.</p>
+    </div>
+    <div class="list" id="list"></div>
+  </section>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const API = 'https://db.ygoprodeck.com/api/v7/';
+const IMG = 'https://images.ygoprodeck.com/images/cards_cropped/';
+const CARD_PAGE = 'https://ygoprodeck.com/card/?search=';
+const CACHE_LIMIT = 500;          // artwork visti tenuti in memoria (i preferiti non contano)
+const CHECK_EVERY = 24*3600*1000; // controllo nuove carte al massimo una volta al giorno
+const LS_KEY = 'ygoart.index.v1';
+
+const $ = id => document.getElementById(id);
+let index = null;      // [[id, nome], ...]
+let fallback = false;  // true se l'elenco completo non è scaricabile
+let current = null;    // {id, name}
+let currentURL = null;
+let busy = false;
+
+/* ---------- IndexedDB ---------- */
+let dbp = null;
+function db(){
+  if (dbp) return dbp;
+  dbp = new Promise((res, rej) => {
+    const r = indexedDB.open('ygoart', 1);
+    r.onupgradeneeded = () => {
+      r.result.createObjectStore('images', {keyPath:'id'});
+      r.result.createObjectStore('favs', {keyPath:'id'});
+    };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+  return dbp;
+}
+async function tx(store, mode, fn){
+  try{
+    const d = await db();
+    return await new Promise((res, rej) => {
+      const t = d.transaction(store, mode), s = t.objectStore(store);
+      const req = fn(s);
+      t.oncomplete = () => res(req && req.result);
+      t.onerror = () => rej(t.error);
+    });
+  }catch(e){ return undefined; }
+}
+const idbGet = (s, k) => tx(s, 'readonly', st => st.get(k));
+const idbAll = s => tx(s, 'readonly', st => st.getAll());
+const idbPut = (s, v) => tx(s, 'readwrite', st => st.put(v));
+const idbDel = (s, k) => tx(s, 'readwrite', st => st.delete(k));
+
+/* ---------- Elenco carte ---------- */
+function readLS(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)); }catch(e){ return null; } }
+function writeLS(v){ try{ localStorage.setItem(LS_KEY, JSON.stringify(v)); }catch(e){} }
+
+async function dbVersion(){
+  const r = await fetch(API + 'checkDBVer.php');
+  const j = await r.json();
+  const v = Array.isArray(j) ? j[0] : j;
+  return String(v.database_version ?? v.last_update ?? '');
+}
+async function downloadIndex(){
+  $('artmsg').textContent = "Scarico l'elenco delle carte (solo la prima volta, qualche MB)…";
+  const r = await fetch(API + 'cardinfo.php');
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const j = await r.json();
+  const out = [];
+  for (const c of j.data || []) for (const im of c.card_images || [])
+    if (im.image_url_cropped) out.push([im.id, c.name]);
+  if (!out.length) throw new Error('elenco vuoto');
+  return out;
+}
+async function loadIndex(){
+  const saved = readLS();
+  const now = Date.now();
+  if (saved && saved.cards && now - saved.checked < CHECK_EVERY) return saved.cards;
+  try{
+    const ver = await dbVersion().catch(() => null);
+    if (saved && saved.cards && ver && ver === saved.ver){
+      writeLS({...saved, checked: now});
+      return saved.cards;
+    }
+    const cards = await downloadIndex();
+    writeLS({ver: ver || '', checked: now, cards});
+    return cards;
+  }catch(e){
+    if (saved && saved.cards) return saved.cards;
+    throw e;
+  }
+}
+
+/* ---------- Immagini: ognuna scaricata al massimo una volta ---------- */
+async function getBlob(id){
+  const hit = await idbGet('images', id);
+  if (hit && hit.blob){ hit.ts = Date.now(); idbPut('images', hit); return hit.blob; }
+  try{
+    const r = await fetch(IMG + id + '.jpg', {mode:'cors'});
+    if (!r.ok) return null;
+    const blob = await r.blob();
+    await idbPut('images', {id, blob, ts: Date.now()});
+    trimCache();
+    return blob;
+  }catch(e){ return null; } // il server non permette la lettura diretta: si usa il link
+}
+async function trimCache(){
+  const all = await idbAll('images'); if (!all) return;
+  const favs = new Set(((await idbAll('favs')) || []).map(f => f.id));
+  const loose = all.filter(i => !favs.has(i.id)).sort((a,b) => a.ts - b.ts);
+  for (let i = 0; i < loose.length - CACHE_LIMIT; i++) await idbDel('images', loose[i].id);
+}
+
+/* ---------- Pesca ---------- */
+async function pickRandom(){
+  if (!fallback){
+    let e; do { e = index[Math.floor(Math.random()*index.length)]; }
+    while (index.length > 1 && current && e[0] === current.id);
+    return {id: e[0], name: e[1]};
+  }
+  const r = await fetch(API + 'randomcard.php');
+  const j = await r.json();
+  const c = j.data ? j.data[0] : j;
+  const im = (c.card_images || []).find(i => i.image_url_cropped) || (c.card_images || [])[0];
+  return {id: im.id, name: c.name};
+}
+async function draw(){
+  if (busy) return; busy = true;
+  $('draw').disabled = true; $('fav').disabled = true;
+  $('artmsg').hidden = false; $('artmsg').textContent = 'Pesco…';
+  try{
+    const card = await pickRandom();
+    const blob = await getBlob(card.id);
+    if (currentURL && currentURL.startsWith('blob:')) URL.revokeObjectURL(currentURL);
+    currentURL = blob ? URL.createObjectURL(blob) : IMG + card.id + '.jpg';
+    const img = $('art');
+    await new Promise((res) => { img.onload = res; img.onerror = res; img.src = currentURL; });
+    img.alt = 'Artwork di ' + card.name; img.hidden = false; $('artmsg').hidden = true;
+    current = card;
+    $('name').textContent = card.name;
+    $('code').innerHTML = '';
+    const a = document.createElement('a');
+    a.href = CARD_PAGE + encodeURIComponent(card.name); a.target = '_blank'; a.rel = 'noopener';
+    a.textContent = '#' + String(card.id).padStart(8, '0');
+    $('code').append(a);
+    await refreshFavButton();
+  }catch(e){
+    $('artmsg').hidden = false; $('art').hidden = true;
+    $('artmsg').textContent = 'Non riesco a raggiungere il sito delle carte. Controlla la connessione e riprova.';
+  }
+  busy = false; $('draw').disabled = false;
+}
+
+/* ---------- Preferiti ---------- */
+async function refreshFavButton(){
+  const b = $('fav');
+  if (!current){ b.disabled = true; return; }
+  const on = !!(await idbGet('favs', current.id));
+  b.disabled = false;
+  b.textContent = on ? '★ Salvato' : '☆ Salva';
+  b.classList.toggle('saved', on);
+  b.setAttribute('aria-pressed', on);
+}
+async function toggleFav(){
+  if (!current) return;
+  const on = await idbGet('favs', current.id);
+  if (on){ await idbDel('favs', current.id); toast('Tolto dalla lista'); }
+  else { await idbPut('favs', {...current, ts: Date.now()}); toast('Aggiunto alla lista da scaricare'); }
+  await refreshFavButton(); updateCount();
+}
+async function updateCount(){
+  const favs = (await idbAll('favs')) || [];
+  $('favcount').textContent = favs.length;
+  return favs;
+}
+const listURLs = [];
+async function renderList(){
+  listURLs.splice(0).forEach(u => URL.revokeObjectURL(u));
+  const favs = (await updateCount()).sort((a,b) => b.ts - a.ts);
+  const box = $('list'); box.innerHTML = '';
+  $('listinfo').textContent = favs.length
+    ? favs.length + (favs.length === 1 ? ' artwork salvato' : ' artwork salvati') + ' su questo telefono.'
+    : 'Gli artwork salvati restano su questo telefono.';
+  if (!favs.length){
+    box.innerHTML = '<div class="empty" style="grid-column:1/-1">Nessun artwork salvato. Pesca una carta e tocca ☆ Salva per metterla qui.</div>';
+    return;
+  }
+  for (const f of favs){
+    const hit = await idbGet('images', f.id);
+    let src = IMG + f.id + '.jpg';
+    if (hit && hit.blob){ src = URL.createObjectURL(hit.blob); listURLs.push(src); }
+    const el = document.createElement('div'); el.className = 'item';
+    const img = document.createElement('img'); img.src = src; img.alt = 'Artwork di ' + f.name; img.loading = 'lazy';
+    const n = document.createElement('div'); n.className = 'n'; n.textContent = f.name;
+    const row = document.createElement('div'); row.className = 'row';
+    const dl = document.createElement('button'); dl.className = 'btn'; dl.textContent = 'Scarica';
+    dl.onclick = () => saveFile(f);
+    const rm = document.createElement('button'); rm.className = 'btn rm'; rm.textContent = 'Togli';
+    rm.setAttribute('aria-label', 'Togli ' + f.name + ' dalla lista');
+    rm.onclick = async () => { await idbDel('favs', f.id); if (current && current.id === f.id) refreshFavButton(); renderList(); };
+    row.append(dl, rm); el.append(img, n, row); box.append(el);
+  }
+}
+function fileName(f){
+  return (f.name.replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '') || 'artwork') + '-' + f.id + '.jpg';
+}
+async function saveFile(f){
+  const blob = await getBlob(f.id);
+  if (!blob){ window.open(IMG + f.id + '.jpg', '_blank'); toast("Tieni premuto sull'immagine per salvarla"); return; }
+  const file = new File([blob], fileName(f), {type: blob.type || 'image/jpeg'});
+  if (navigator.canShare && navigator.canShare({files:[file]})){
+    try{ await navigator.share({files:[file], title: f.name}); return; }
+    catch(e){ if (e && e.name === 'AbortError') return; }
+  }
+  const url = URL.createObjectURL(file);
+  const a = document.createElement('a'); a.href = url; a.download = file.name;
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+/* ---------- UI ---------- */
+let tt;
+function toast(t){ const el = $('toast'); el.textContent = t; el.classList.add('on'); clearTimeout(tt); tt = setTimeout(() => el.classList.remove('on'), 1800); }
+function showTab(which){
+  const list = which === 'list';
+  $('tab-draw').setAttribute('aria-selected', !list);
+  $('tab-list').setAttribute('aria-selected', list);
+  $('view-draw').hidden = list; $('view-list').hidden = !list;
+  if (list) renderList();
+}
+$('tab-draw').onclick = () => showTab('draw');
+$('tab-list').onclick = () => showTab('list');
+$('draw').onclick = draw;
+$('fav').onclick = toggleFav;
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' && !$('view-draw').hidden && e.target === document.body){ e.preventDefault(); draw(); }
+});
+
+(async function start(){
+  updateCount();
+  try{
+    index = await loadIndex();
+    $('status').textContent = index.length.toLocaleString('it-IT') + ' artwork nell\'elenco';
+  }catch(e){
+    fallback = true;
+    $('status').textContent = 'Elenco completo non disponibile: pesco una carta alla volta dal sito.';
+  }
+  $('draw').disabled = false;
+  draw();
+})();
+</script>
+</body>
+</html>
